@@ -1,5 +1,6 @@
 package cn.xpbootcamp.legacy_code;
 
+import cn.xpbootcamp.legacy_code.entity.Bill;
 import cn.xpbootcamp.legacy_code.enums.STATUS;
 import cn.xpbootcamp.legacy_code.service.WalletService;
 import cn.xpbootcamp.legacy_code.service.WalletServiceImpl;
@@ -10,19 +11,10 @@ import javax.transaction.InvalidTransactionException;
 
 public class WalletTransaction {
     private String id;
-    private Long buyerId;
-    private Long sellerId;
-    private Long createdTimestamp;
-    private Double amount;
-    private STATUS status;
+    Bill bill;
 
-
-    public WalletTransaction(String preAssignedId, Long buyerId, Long sellerId, double amount) {
-        this.buyerId = buyerId;
-        this.sellerId = sellerId;
-        this.status = STATUS.TO_BE_EXECUTED;
-        this.createdTimestamp = System.currentTimeMillis();
-        this.amount = amount;
+    public WalletTransaction(String preAssignedId,Bill billInstance) {
+        bill = billInstance;
         generatorID(preAssignedId);
     }
 
@@ -38,8 +30,8 @@ public class WalletTransaction {
     }
 
     public boolean execute() throws InvalidTransactionException {
-        validateInfo();
-        if (status == STATUS.EXECUTED) {
+        bill.validateInfo();
+        if (bill.getStatus() == STATUS.EXECUTED) {
             return true;
         }
         boolean isLocked = false;
@@ -52,17 +44,17 @@ public class WalletTransaction {
             }
             long executionInvokedTimestamp = System.currentTimeMillis();
             // 交易超过20天
-            if (executionInvokedTimestamp - createdTimestamp > 1728000000) {
-                this.status = STATUS.EXPIRED;
+            if (executionInvokedTimestamp - bill.getCreatedTimestamp() > 1728000000) {
+                bill.setStatus(STATUS.EXPIRED);
                 return false;
             }
             WalletService walletService = new WalletServiceImpl();
-            String walletTransactionId = walletService.moveMoney(id, buyerId, sellerId, amount);
+            String walletTransactionId = walletService.moveMoney(id, bill);
             if (walletTransactionId != null) {
-                this.status = STATUS.EXECUTED;
+                bill.setStatus(STATUS.EXECUTED);
                 return true;
             } else {
-                this.status = STATUS.FAILED;
+                bill.setStatus(STATUS.FAILED);
                 return false;
             }
         } finally {
@@ -72,10 +64,6 @@ public class WalletTransaction {
         }
     }
 
-    private void validateInfo() throws InvalidTransactionException {
-        if (buyerId == null || (sellerId == null || amount < 0.0)) {
-            throw new InvalidTransactionException("This is an invalid transaction");
-        }
-    }
+
 
 }
