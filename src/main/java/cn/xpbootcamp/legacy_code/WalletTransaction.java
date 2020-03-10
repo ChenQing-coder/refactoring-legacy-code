@@ -12,10 +12,12 @@ import javax.transaction.InvalidTransactionException;
 public class WalletTransaction {
     private String id;
     Bill bill;
+    RedisDistributedLock redisDistributedLock;
 
-    public WalletTransaction(String preAssignedId,Bill billInstance) {
-        bill = billInstance;
+    public WalletTransaction(String preAssignedId,Bill bill,RedisDistributedLock redisDistributedLock) {
+        this.bill = bill;
         generatorID(preAssignedId);
+        this.redisDistributedLock =redisDistributedLock;
     }
 
     private void generatorID(String preAssignedId) {
@@ -36,18 +38,11 @@ public class WalletTransaction {
         }
         boolean isLocked = false;
         try {
-            isLocked = RedisDistributedLock.getSingletonInstance().lock(id);
-
-            // 锁定未成功，返回false
+            isLocked = redisDistributedLock.lock(id);
             if (!isLocked) {
                 return false;
             }
-            long executionInvokedTimestamp = System.currentTimeMillis();
-            // 交易超过20天
-            if (executionInvokedTimestamp - bill.getCreatedTimestamp() > 1728000000) {
-                bill.setStatus(STATUS.EXPIRED);
-                return false;
-            }
+            if (validateForMoreThan20Days()) return false;
             WalletService walletService = new WalletServiceImpl();
             String walletTransactionId = walletService.moveMoney(id, bill);
             if (walletTransactionId != null) {
@@ -59,11 +54,19 @@ public class WalletTransaction {
             }
         } finally {
             if (isLocked) {
-                RedisDistributedLock.getSingletonInstance().unlock(id);
+                redisDistributedLock.unlock(id);
             }
         }
     }
 
+    private boolean validateForMoreThan20Days() {
+        long executionInvokedTimestamp = System.currentTimeMillis();
+        if (executionInvokedTimestamp - bill.getCreatedTimestamp() > 1728000000) {
+            bill.setStatus(STATUS.EXPIRED);
+            return true;
+        }
+        return false;
+    }
 
 
 }
