@@ -18,7 +18,7 @@ public class WalletTransaction {
     public WalletTransaction(String preAssignedId,Bill bill) {
         this.bill = bill;
         this.redisDistributedLock =new RedisDistributedLock() ;
-        this.walletService = new WalletServiceImpl();
+        this.walletService = new WalletServiceImpl(bill);
         generateID(preAssignedId);
     }
 
@@ -53,7 +53,7 @@ public class WalletTransaction {
     }
 
     private boolean moveMoney() {
-        String walletTransactionId = walletService.moveMoney(id, bill);
+        String walletTransactionId = walletService.moveMoney(id);
         if (walletTransactionId != null) {
             bill.setStatus(STATUS.EXECUTED);
             return true;

@@ -10,27 +10,26 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.mockito.Mockito.*;
-
 import javax.transaction.InvalidTransactionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-
 public class WalletTransactionTest {
 
     @Mock
     private RedisDistributedLock redisDistributedLock;
 
     @Mock
-    private Bill bill ;
+    private Bill bill;
 
     @Mock
     private WalletServiceImpl walletService;
 
     @InjectMocks
-    private WalletTransaction walletTransaction = new WalletTransaction("preAssignedId",bill);
+    private WalletTransaction walletTransaction = new WalletTransaction("preAssignedId", bill);
 
 
     @Test
@@ -69,7 +68,7 @@ public class WalletTransactionTest {
 
         when(redisDistributedLock.lock(any())).thenReturn(true);
         when(bill.getCreatedTimestamp()).thenReturn(System.currentTimeMillis());
-        when(walletService.moveMoney(any(),any())).thenReturn("1");
+        when(walletService.moveMoney(any())).thenReturn("1");
 
         boolean result = walletTransaction.execute();
 
@@ -81,7 +80,7 @@ public class WalletTransactionTest {
 
         when(redisDistributedLock.lock(any())).thenReturn(true);
         when(bill.getCreatedTimestamp()).thenReturn(System.currentTimeMillis());
-        when(walletService.moveMoney(any(),any())).thenReturn(null);
+        when(walletService.moveMoney(any())).thenReturn(null);
 
         boolean result = walletTransaction.execute();
 

@@ -8,9 +8,15 @@ import cn.xpbootcamp.legacy_code.repository.UserRepositoryImpl;
 import java.util.UUID;
 
 public class WalletServiceImpl implements WalletService {
-    private UserRepository userRepository = new UserRepositoryImpl();
+    private Bill bill;
+    private UserRepository userRepository;
 
-    public String moveMoney(String id, Bill bill) {
+    public WalletServiceImpl(Bill bill) {
+        this.bill = bill;
+        this.userRepository = new UserRepositoryImpl();
+    }
+
+    public String moveMoney(String id) {
         User buyer = userRepository.find(bill.getBuyerId());
         Double amount = bill.getAmount();
         if (buyer.getBalance() >= amount) {
