@@ -14,10 +14,10 @@ public class WalletTransaction {
     Bill bill;
     RedisDistributedLock redisDistributedLock;
 
-    public WalletTransaction(String preAssignedId,Bill bill,RedisDistributedLock redisDistributedLock) {
+    public WalletTransaction(String preAssignedId,Bill bill) {
         this.bill = bill;
         generatorID(preAssignedId);
-        this.redisDistributedLock =redisDistributedLock;
+        this.redisDistributedLock =new RedisDistributedLock() ;
     }
 
     private void generatorID(String preAssignedId) {
@@ -32,26 +32,17 @@ public class WalletTransaction {
     }
 
     public boolean execute() throws InvalidTransactionException {
+        boolean isLocked = false;
         bill.validateInfo();
         if (bill.getStatus() == STATUS.EXECUTED) {
             return true;
         }
-        boolean isLocked = false;
         try {
             isLocked = redisDistributedLock.lock(id);
-            if (!isLocked) {
+            if (!isLocked || isDayMoreThan20Days()) {
                 return false;
             }
-            if (validateForMoreThan20Days()) return false;
-            WalletService walletService = new WalletServiceImpl();
-            String walletTransactionId = walletService.moveMoney(id, bill);
-            if (walletTransactionId != null) {
-                bill.setStatus(STATUS.EXECUTED);
-                return true;
-            } else {
-                bill.setStatus(STATUS.FAILED);
-                return false;
-            }
+            return moveMoney();
         } finally {
             if (isLocked) {
                 redisDistributedLock.unlock(id);
@@ -59,7 +50,19 @@ public class WalletTransaction {
         }
     }
 
-    private boolean validateForMoreThan20Days() {
+    private boolean moveMoney() {
+        WalletService walletService = new WalletServiceImpl();
+        String walletTransactionId = walletService.moveMoney(id, bill);
+        if (walletTransactionId != null) {
+            bill.setStatus(STATUS.EXECUTED);
+            return true;
+        } else {
+            bill.setStatus(STATUS.FAILED);
+            return false;
+        }
+    }
+
+    private boolean isDayMoreThan20Days() {
         long executionInvokedTimestamp = System.currentTimeMillis();
         if (executionInvokedTimestamp - bill.getCreatedTimestamp() > 1728000000) {
             bill.setStatus(STATUS.EXPIRED);
