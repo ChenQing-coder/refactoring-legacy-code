@@ -13,14 +13,16 @@ public class WalletTransaction {
     private String id;
     Bill bill;
     RedisDistributedLock redisDistributedLock;
+    WalletService walletService;
 
     public WalletTransaction(String preAssignedId,Bill bill) {
         this.bill = bill;
-        generatorID(preAssignedId);
         this.redisDistributedLock =new RedisDistributedLock() ;
+        this.walletService = new WalletServiceImpl();
+        generateID(preAssignedId);
     }
 
-    private void generatorID(String preAssignedId) {
+    private void generateID(String preAssignedId) {
         if (preAssignedId != null) {
             this.id = preAssignedId;
         } else {
@@ -51,7 +53,6 @@ public class WalletTransaction {
     }
 
     private boolean moveMoney() {
-        WalletService walletService = new WalletServiceImpl();
         String walletTransactionId = walletService.moveMoney(id, bill);
         if (walletTransactionId != null) {
             bill.setStatus(STATUS.EXECUTED);
